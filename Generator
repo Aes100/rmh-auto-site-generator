@@ -1,0 +1,141 @@
+# generate.py
+# Générateur hebdomadaire RMH — version web-friendly
+import os
+import random
+import datetime
+from jinja2 import Environment, FileSystemLoader, select_autoescape
+from slugify import slugify
+from github import Github, InputGitAuthor
+
+# ---------- CONFIG ----------
+BASE_DIR = os.path.dirname(__file__)
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+DATA_DIR = os.path.join(BASE_DIR, "data")
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+
+SITE_TITLE_BASE = "RMH — Réflexion & Action"
+FLAG_URL = "https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg"
+# Les valeurs suivantes doivent être fournies via secrets / variables d'environnement dans GitHub Actions
+GITHUB_PAT = os.environ.get("GITHUB_PAT")
+GITHUB_OWNER = os.environ.get("GITHUB_OWNER")
+RMH_MAIN_URL = os.environ.get("RMH_MAIN_URL", "https://sites.google.com/view/rmh-france/home")
+# ----------------------------
+
+env = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=select_autoescape(['html', 'xml'])
+)
+
+def read_lines(path):
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        return [l.strip() for l in f if l.strip()]
+
+def pick_random_styles():
+    fonts = ["Georgia", "Arial", "Helvetica", "Verdana", "Palatino", "Trebuchet MS"]
+    colors = [
+        ("#0b6efd","#fb6f92"),
+        ("#1b6b39","#f1a208"),
+        ("#8b2be2","#e91e63"),
+        ("#c62828","#2e7d32"),
+        ("#1976d2","#ff7043")
+    ]
+    font = random.choice(fonts)
+    main_color, accent_color = random.choice(colors)
+    return font, main_color, accent_color
+
+def make_article(theme, citation):
+    sentences = [
+        f"Le mouvement Renouveau Moral Humaniste (RMH) promeut {theme}.",
+        "Il s'agit d'un engagement pratique, quotidien et accessible à toutes et tous.",
+        "Cette semaine, nous réfléchissons à comment mettre en œuvre ces valeurs localement.",
+        "Les actions commencent par l'exemple — éducation, solidarité et respect.",
+        "Rejoignez les initiatives locales et repartez avec des outils concrets."
+    ]
+    random.shuffle(sentences)
+    return " ".join(sentences[:4])
+
+def render_html(context, template_name="base.html.j2"):
+    tpl = env.get_template(template_name)
+    return tpl.render(**context)
+
+def create_repo_with_site(repo_name, html_files):
+    # html_files: dict path=>content (string)
+    g = Github(GITHUB_PAT)
+    user = g.get_user()
+    # create repo
+    repo = user.create_repo(repo_name, description="Site hebdo RMH généré automatiquement", private=False, auto_init=False)
+    author = InputGitAuthor("rmh-bot", "rmh-bot@example.com")
+    # create main branch files
+    for path, content in html_files.items():
+        repo.create_file(path, f"Add {path}", content, author=author)
+    # create gh-pages branch from main
+    sb = repo.get_branch("main")
+    repo.create_git_ref(ref=f"refs/heads/gh-pages", sha=sb.commit.sha)
+    # duplicate index.html on gh-pages branch
+    if "index.html" in html_files:
+        try:
+            repo.create_file("index.html", "index for gh-pages", html_files["index.html"], branch="gh-pages")
+        except Exception:
+            pass
+    return repo
+
+def main():
+    # read citations
+    cit_path = os.path.join(DATA_DIR, "citations.txt")
+    citations = read_lines(cit_path)
+    citation = random.choice(citations) if citations else "Renouveau Moral Humaniste."
+    themes = ["solidarité", "intégrité", "éducation civique", "service public", "respect"]
+    theme = random.choice(themes)
+    font, main_color, accent_color = pick_random_styles()
+    date_obj = datetime.date.today()
+    iso = date_obj.isocalendar()
+    week_label = f"{iso[0]}-W{iso[1]:02d}"
+    site_title = f"{SITE_TITLE_BASE} — {theme.title()}"
+
+    context = {
+        "site_title": site_title,
+        "title": site_title,
+        "theme": theme,
+        "date_str": date_obj.strftime("%Y-%m-%d"),
+        "citation": citation,
+        "article": make_article(theme, citation),
+        "rmh_url": RMH_MAIN_URL,
+        "index_url": "#",
+        "flag_url": FLAG_URL,
+        "font": font,
+        "main_color": main_color,
+        "accent_color": accent_color
+    }
+
+    html = render_html(context)
+    # create extra pages (projects, pourquoi)
+    context_projects = dict(context)
+    context_projects["title"] = f"{site_title} — Projets"
+    context_projects["article"] = "<ul><li>Projet d'éducation locale</li><li>Action solidaire</li><li>Atelier citoyen</li></ul>"
+    html_projects = render_html(context_projects)
+
+    context_pourquoi = dict(context)
+    context_pourquoi["title"] = f"{site_title} — Pourquoi"
+    context_pourquoi["article"] = "Le Renouveau Moral Humaniste se construit par des gestes concrets et des projets locaux."
+    html_pourquoi = render_html(context_pourquoi)
+
+    # files to create in the new repo
+    html_files = {
+        "index.html": html,
+        "projects.html": html_projects,
+        "pourquoi.html": html_pourquoi,
+        "README.md": f"# RMH hebdomadaire {week_label}"
+    }
+
+    # name repo
+    repo_name = f"rmh-week-{week_label}.github.io"
+    print("Creating repo:", repo_name)
+
+    repo = create_repo_with_site(repo_name, html_files)
+    print("Created:", repo.html_url)
+    print("Pages will be served at https://{owner}.github.io/{repo}/ (attendre quelques minutes)".format(owner=GITHUB_OWNER, repo=repo_name))
+
+if __name__ == "__main__":
+    main()
