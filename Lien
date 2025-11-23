@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{{ title }}</title>
+  <style>
+    :root{
+      --bg-img: url('{{ flag_url }}');
+      --main-color: {{ main_color }};
+      --accent-color: {{ accent_color }};
+      --font-family: '{{ font }}', sans-serif;
+    }
+    html,body{ height:100%; margin:0; font-family:var(--font-family); }
+    body{
+      background-image: linear-gradient(rgba(255,255,255,0.86), rgba(255,255,255,0.86)), var(--bg-img);
+      background-size: cover;
+      background-position: center;
+      color: #222;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:24px;
+    }
+    .card{
+      max-width:900px;
+      width:100%;
+      background:linear-gradient(180deg, rgba(255,255,255,0.98), rgba(255,255,255,0.94));
+      border-radius:12px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.12);
+      padding:28px;
+      border-left:8px solid var(--main-color);
+    }
+    header h1{ margin:0; font-size:1.6rem; color:var(--main-color) }
+    .meta{ font-size:0.9rem; color:#444; margin-bottom:12px }
+    .quote{ font-style:italic; margin:18px 0; padding:12px 18px; background:rgba(0,0,0,0.03); border-radius:8px; }
+    .article{ line-height:1.6; margin-bottom:16px }
+    .buttons{ display:flex; gap:12px; flex-wrap:wrap }
+    .btn{
+      display:inline-block; padding:10px 14px; border-radius:8px; text-decoration:none;
+      background:var(--accent-color); color:white; font-weight:600;
+      box-shadow:0 6px 14px rgba(0,0,0,0.08);
+    }
+    footer{ margin-top:14px; font-size:0.85rem; color:#666; }
+    @media (max-width:600px){
+      .card{ padding:18px }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <header>
+      <h1>{{ site_title }}</h1>
+      <div class="meta">Thème : {{ theme }} — Publié le {{ date_str }}</div>
+    </header>
+
+    <div class="quote">“{{ citation }}”</div>
+
+    <div class="article">
+      {{ article | safe }}
+    </div>
+
+    <div class="buttons">
+      <a class="btn" href="{{ rmh_url }}" target="_blank">En savoir plus → RMH</a>
+      <a class="btn" href="index.html">Accueil</a>
+      <a class="btn" href="projects.html">Projets</a>
+      <a class="btn" href="pourquoi.html">Pourquoi</a>
+    </div>
+
+    <footer>Projet RMH — réflexion & action. <br/>Site généré automatiquement — contenu authentique.</footer>
+  </div>
+</body>
+</html>
