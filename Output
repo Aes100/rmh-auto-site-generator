@@ -1,0 +1,13 @@
+import os
+from datetime import datetime
+
+# Crée le dossier Output s'il n'existe pas
+os.makedirs("Output", exist_ok=True)
+
+# Nom du fichier unique avec la date
+date_str = datetime.now().strftime("%Y-%m-%d")
+filename = f"Output/site-{date_str}.html"
+
+# Contenu du site
+with open(filename, "w", encoding="utf-8") as f:
+    f.write(f"<html><body><p>Site RMH du {date_str}</p></body></html>")
