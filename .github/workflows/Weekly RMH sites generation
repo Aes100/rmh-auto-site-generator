@@ -1,0 +1,42 @@
+name: Weekly RMH Site Generation
+
+# Déclenche le workflow automatiquement chaque lundi à 10h UTC
+# et permet de le lancer manuellement
+on:
+  schedule:
+    - cron: '0 10 * * 1'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Récupère ton dépôt
+      - uses: actions/checkout@v3
+
+      # Installe Python 3.11
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      # Installe les dépendances
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r generator/requirements.txt
+
+      # Lance ton script de génération de site
+      - name: Run generator
+        run: |
+          python generator/generate.py
+
+      # Commit et push les fichiers générés dans output/
+      - name: Commit generated site
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/
+          git commit -m "Generated site for $(date +'%Y-%m-%d')" || echo "No changes"
+          git push
