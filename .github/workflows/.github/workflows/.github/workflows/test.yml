@@ -29,3 +29,4 @@ jobs:
           git add output/
           git commit -m "Generated site for $(date +'%Y-%m-%d')" || echo "No changes"
           git push
+          # test
